@@ -8,7 +8,7 @@ class createBook:
     def __init__(self,name,path):
         self.name = name
         self.path = path
-        nameList = sorted(os.listdir(os.path.join(path,'Images')),key= lambda x : int(x[:-4]))
+        nameList = sorted([d for d in os.listdir(os.path.join(path,'Images')) if d != '.DS_Store'],key= lambda x : int(x[:-4]))
         self.imageNameList = [os.path.join(path,'Images',x) for x in nameList]
 
     def makePdf(self):

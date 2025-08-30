@@ -1,3 +1,4 @@
+import logging
 import pytesseract
 from PIL import Image
 import requests
@@ -8,7 +9,8 @@ import random
 
 class StoreImages:
 
-    def __init__(self,bookpath,proxyflag,resolution,tesserPath):
+    def __init__(self,country,bookpath,proxyflag,resolution,tesserPath):
+        self.country = country
         self.pageResolution = resolution
         self.proxyFlag = proxyflag
         self.bookPath = bookpath
@@ -41,17 +43,27 @@ class StoreImages:
 
     def resethead(self):
         try:
-            req = requests.get("https://google.com")
+            req = requests.get("https://google."+self.country, cookies={'CONSENT': 'YES+1'}, verify=False)
+            NIDstr = req.cookies.get('NID')
+            SecureENIDstr = req.cookies.get('__Secure-ENID')
+            CookieStr = ""
+            if ((NIDstr == None) and (SecureENIDstr != None)):
+                CookieStr = "__Secure-ENID=" + SecureENIDstr
+            elif ((NIDstr != None) and (SecureENIDstr == None)):
+                CookieStr = "NID=" + NIDstr
+            else:
+                CookieStr = "NID=" + str(req.cookies.get('NID') + ";__Secure-ENID=" + str(req.cookies.get('__Secure-ENID')))
             self.head = {
-                'Host': 'books.google.com',
+                'Host': 'books.google.'+self.country,
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:53.0) Gecko/20100101 Firefox/53.00',
                 'Accept': '*/*',
                 'Accept-Language': 'en-US,en;q=0.5',
                 'Accept-Encoding': 'gzip, deflate',
                 'Connection': 'close',
-                'Cookie': "__Secure-ENID=" + str(req.cookies['__Secure-ENID']),
+                'Cookie': CookieStr,
             }
         except:
+            logging.exception("")
             pass
 
     def pageEmpty(self,image):

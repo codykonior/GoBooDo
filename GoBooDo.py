@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import logging
 import json
 import random
 import requests
@@ -48,6 +49,15 @@ class  GoBooDo:
     def resethead(self):
         try:
             req = requests.get("https://google."+self.country, cookies={'CONSENT': 'YES+1'}, verify=False)
+            NIDstr = req.cookies.get('NID')
+            SecureENIDstr = req.cookies.get('__Secure-ENID')
+            CookieStr = ""
+            if ((NIDstr == None) and (SecureENIDstr != None)):
+                CookieStr = "__Secure-ENID=" + SecureENIDstr
+            elif ((NIDstr != None) and (SecureENIDstr == None)):
+                CookieStr = "NID=" + NIDstr
+            else:
+                CookieStr = "NID=" + str(req.cookies.get('NID') + ";__Secure-ENID=" + str(req.cookies.get('__Secure-ENID')))
             self.head = {
                 'Host': 'books.google.'+self.country,
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64; rv:53.0) Gecko/20100101 Firefox/53.00',
@@ -55,8 +65,8 @@ class  GoBooDo:
                 'Accept-Language': 'en-US,en;q=0.5',
                 'Accept-Encoding': 'gzip, deflate',
                 'Connection': 'close',
-                'Cookie': "__Secure-ENID=" + str(req.cookies['__Secure-ENID']),
-                        }
+                'Cookie': CookieStr,
+            }
         except Exception as e:
             if 'captcha'.encode() in req.content:
                 print("IP detected by Google for too much requests, asking for captcha completion. Please wait some minutes before trying again. \n")
@@ -78,10 +88,10 @@ class  GoBooDo:
         initUrl = "https://books.google." + self.country + "/books?id=" + self.id + "&printsec=frontcover"
         pageData = requests.get(initUrl, headers=self.head, verify=False)
         soup = BeautifulSoup(pageData.content, "html5lib")
-        self.name = soup.findAll("title")[0].contents[0]
+        self.name = soup.find_all("title")[0].contents[0]
         print(f'Downloading {self.name[:-15]}')
         if self.found == False:
-            scripts = (soup.findAll('script'))
+            scripts = (soup.find_all('script'))
             target = "_OC_Run"
             index = [i for i, content in enumerate(scripts) if '_OC_Run' in str(content)]
             index = index[0]
@@ -116,6 +126,11 @@ class  GoBooDo:
                     self.pageList.remove(lastPage)
                     print(f'Fetched link for {lastPage}.')
                 except Exception as e:
+                    # This prints a lot
+                    # logging.exception("")
+                    #
+                    #     self.pageList.remove(lastPage)
+                    # ValueError: list.remove(x): x not in list
                     pass
         return True
 
@@ -143,7 +158,7 @@ class  GoBooDo:
 
     def processBook(self):
         print('------------------- Fetching Images -------------------')
-        downloadService = StoreImages(self.path,settings['proxy_images'],settings['page_resolution'],settings['tesseract_path'])
+        downloadService = StoreImages(self.country,self.path,settings['proxy_images'],settings['page_resolution'],settings['tesseract_path'])
         downloadService.getImages(settings['max_retry_images']+1)
         print('------------------- Creating PDF -------------------')
         service = createBook(self.name, self.path)
@@ -171,6 +186,7 @@ class  GoBooDo:
                 else:
                     interimData = self.fetchPageLinks()
             except:
+                logging.exception("")
                 pass
             self.insertIntoPageDict(interimData)
             try:
